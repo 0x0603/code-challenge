@@ -1,0 +1,50 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-bg text-ink-1 font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Numbers stay aligned in any context — critical for swap amounts. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Editorial display utility — reserved for hero amounts only. */
+  .display {
+    @apply font-serif tracking-tight;
+    font-feature-settings: 'liga', 'dlig';
+  }
+
+  /* Hide arrows on number inputs — we render our own context (USD, balance). */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  ::selection {
+    @apply bg-accent-soft text-accent;
+  }
+}

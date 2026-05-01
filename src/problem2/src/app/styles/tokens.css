@@ -1,0 +1,52 @@
+/*
+ * Design tokens — single source of truth for color, spacing, and motion.
+ * Components consume these via Tailwind utility classes mapped in
+ * tailwind.config.ts. Values are stored as raw RGB triples so that
+ * Tailwind's <alpha-value> syntax (e.g. `bg-surface/80`) keeps working.
+ *
+ * The :root scope holds the light theme; the `.dark` scope overrides only
+ * what changes for dark mode. Adding a new theme is one block, not a fork.
+ */
+:root {
+  --color-bg: 250 250 247;
+  --color-surface: 255 255 255;
+  --color-surface-elevated: 255 255 255;
+  --color-border-subtle: 236 234 227;
+  --color-border-default: 221 217 206;
+
+  --color-ink-1: 20 17 12;
+  --color-ink-2: 74 70 57;
+  --color-ink-3: 140 134 118;
+
+  --color-accent: 15 81 50;
+  --color-accent-soft: 232 241 236;
+  --color-accent-fg: 255 255 255;
+
+  --color-positive: 15 81 50;
+  --color-warning: 180 83 9;
+  --color-negative: 159 18 57;
+
+  color-scheme: light;
+}
+
+.dark {
+  --color-bg: 15 14 11;
+  --color-surface: 26 24 21;
+  --color-surface-elevated: 35 32 28;
+  --color-border-subtle: 40 37 32;
+  --color-border-default: 56 52 46;
+
+  --color-ink-1: 245 242 232;
+  --color-ink-2: 200 195 180;
+  --color-ink-3: 140 134 118;
+
+  --color-accent: 107 203 154;
+  --color-accent-soft: 31 50 41;
+  --color-accent-fg: 15 14 11;
+
+  --color-positive: 107 203 154;
+  --color-warning: 234 179 8;
+  --color-negative: 248 113 113;
+
+  color-scheme: dark;
+}
