@@ -125,6 +125,7 @@ export const SwapForm = () => {
       toSymbol: values.toSymbol ?? '',
       pay: parseAmount(values.payAmount) ?? 0,
       receive: activeRoute.expectedReceive,
+      routedVia: activeRoute.dex.name,
     });
   });
 
@@ -157,6 +158,7 @@ export const SwapForm = () => {
   const handleDismissSubmission = useCallback(() => {
     resetSubmission();
     form.reset(DEFAULTS);
+    setSelectedDexId(null);
   }, [resetSubmission, form]);
 
   const errors = form.formState.errors;

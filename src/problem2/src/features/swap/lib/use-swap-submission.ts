@@ -17,6 +17,8 @@ export type SwapReceipt = {
   toSymbol: string;
   pay: number;
   receive: number;
+  /** DEX label the swap was routed through (display string). */
+  routedVia: string;
   txId: string;
   finishedAt: number;
 };
