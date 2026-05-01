@@ -108,9 +108,9 @@ Radix Dialog at that point.
 
 **Decision.** Two persistence layers for two different lifetimes.
 
-- `flowswap.recent-tokens.v1` → `localStorage`. Survives sessions; a
+- `99TechSwap.recent-tokens.v1` → `localStorage`. Survives sessions; a
   user returning tomorrow sees their usual pairs at the top.
-- `flowswap.rate-history.{pair}.v1` → `sessionStorage`. Captured the
+- `99TechSwap.rate-history.{pair}.v1` → `sessionStorage`. Captured the
   first time the user opens a pair and never overwritten until the tab
   closes.
 

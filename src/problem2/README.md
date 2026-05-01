@@ -5,12 +5,9 @@
 
 Most swap UIs answer "how do I send tokens"; the more interesting answer is
 "how does the form earn the user's trust to press Confirm". 99TechSwap is
-shaped around that second question — a Ledger-style two-column layout where
-the left side captures intent and the right side answers *which DEX gives me
-the best deal right now, and how long is that quote good for*.
-
-The brief is `src/problem2` from the
-[99tech / Switcheo code challenge](https://github.com/99techteam/code-challenge).
+shaped around that second question — a two-column layout where the left
+side captures intent and the right side answers *which DEX gives me the
+best deal right now, and how long is that quote good for*.
 
 ---
 
@@ -28,6 +25,10 @@ pnpm lint         # eslint flat-config, --max-warnings 0
 Node ≥ 20. `npm` works too — pnpm is just what I used.
 
 ---
+
+| Main swap form | Choose best router |
+| :---: | :---: |
+| <img src="image.png" width="840" alt="Main view" /> | <img src="image-1.png" width="840" alt="Confirmed state" /> |
 
 ## Product thinking
 
@@ -50,8 +51,7 @@ amount" is one click.
 
 **What we'd watch.** *Empty-state CTR* (clicks on a market token) and
 the *form-fill rate* (% of sessions that put a number in the pay
-input). The card design copies Ledger's swap surface where this
-pattern was clearly load-bearing.
+input).
 
 ### Live multi-DEX comparison earns the "good deal" feeling
 
@@ -350,4 +350,6 @@ integration.
 
 Brand logos (Uniswap, dYdX, Curve, 1inch) are used to make the demo
 recognizable. They are not implied endorsements; the underlying data is
-mocked, not aggregated from the real venues.
+mocked, not aggregated from the real venues. A handful of UI patterns
+and naming conventions are informed by surveying existing DEX
+interfaces — the layout, copy, and implementation are mine.

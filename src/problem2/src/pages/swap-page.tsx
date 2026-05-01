@@ -6,7 +6,7 @@ export const SwapPage = () => (
     <header className="w-full max-w-[1000px] flex items-center justify-between mb-8 sm:mb-10">
       <div className="flex items-center gap-2">
         <span aria-hidden className="inline-block h-3 w-3 rounded-full bg-accent" />
-        <span className="font-medium tracking-tight">FlowSwap</span>
+        <span className="font-medium tracking-tight">99TechSwap</span>
       </div>
       <ThemeToggle />
     </header>

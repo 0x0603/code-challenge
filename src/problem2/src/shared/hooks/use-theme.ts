@@ -3,7 +3,7 @@ import { useLocalStorage } from './use-local-storage';
 
 export type Theme = 'light' | 'dark' | 'system';
 
-const STORAGE_KEY = 'flowswap.theme.v1';
+const STORAGE_KEY = '99TechSwap.theme.v1';
 
 const resolveTheme = (theme: Theme): 'light' | 'dark' => {
   if (theme === 'system') {

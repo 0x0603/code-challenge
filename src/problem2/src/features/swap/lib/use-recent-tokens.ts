@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useLocalStorage } from '@/shared/hooks';
 
-const STORAGE_KEY = 'flowswap.recent-tokens.v1';
+const STORAGE_KEY = '99TechSwap.recent-tokens.v1';
 const DEFAULT_LIMIT = 6;
 
 /**
