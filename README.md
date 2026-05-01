@@ -2,6 +2,8 @@
 
 Three problems, each in its own folder. Open the linked README for the full write-up — design choices, trade-offs, and run instructions.
 
+> **Live demo (Problem 2):** [code-challenge-sandy.vercel.app](https://code-challenge-sandy.vercel.app/)
+
 | Problem | Topic | Stack | Read |
 |---|---|---|---|
 | **[Problem 1](./src/problem1/README.md)** | Three implementations of `sum_to_n(n)` with shared contract, IEEE 754 reasoning, and a micro-benchmark | Node, plain JS, `node:test` | [`src/problem1/`](./src/problem1/) |

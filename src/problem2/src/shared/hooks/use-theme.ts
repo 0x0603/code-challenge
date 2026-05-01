@@ -23,7 +23,7 @@ const applyTheme = (resolved: 'light' | 'dark') => {
  * mode so the page tracks the OS automatically without a refresh.
  */
 export const useTheme = () => {
-  const [theme, setTheme] = useLocalStorage<Theme>(STORAGE_KEY, 'system');
+  const [theme, setTheme] = useLocalStorage<Theme>(STORAGE_KEY, 'dark');
   const [resolved, setResolved] = useState<'light' | 'dark'>(() =>
     typeof window === 'undefined' ? 'light' : resolveTheme(theme),
   );
