@@ -30,7 +30,7 @@ export type DexProfile = {
   readonly logoUrl: string;
 };
 
-const LOGO_BASE = 'https://icons.llamao.fi/icons/protocols';
+const LLAMA_BASE = 'https://icons.llamao.fi/icons/protocols';
 
 export const DEX_PROFILES: readonly DexProfile[] = [
   {
@@ -40,7 +40,8 @@ export const DEX_PROFILES: readonly DexProfile[] = [
     feeBps: 30,
     slippage: (usd) => 0.00005 * Math.sqrt(usd),
     color: '#FF007A',
-    logoUrl: `${LOGO_BASE}/uniswap?w=64&h=64`,
+    logoUrl:
+      'https://images.seeklogo.com/logo-png/44/1/uniswap-uni-logo-png_seeklogo-444502.png',
   },
   {
     id: 'orderbook',
@@ -49,7 +50,7 @@ export const DEX_PROFILES: readonly DexProfile[] = [
     feeBps: 5,
     slippage: (usd) => 0.0000012 * usd,
     color: '#6966FF',
-    logoUrl: `${LOGO_BASE}/dydx?w=64&h=64`,
+    logoUrl: '/logos/dydx.svg',
   },
   {
     id: 'stable',
@@ -58,7 +59,7 @@ export const DEX_PROFILES: readonly DexProfile[] = [
     feeBps: 20,
     slippage: () => 0.0008,
     color: '#A6192E',
-    logoUrl: `${LOGO_BASE}/curve-finance?w=64&h=64`,
+    logoUrl: `${LLAMA_BASE}/curve-finance?w=64&h=64`,
   },
   {
     id: 'aggregator',
@@ -67,7 +68,7 @@ export const DEX_PROFILES: readonly DexProfile[] = [
     feeBps: 10,
     slippage: () => 0.0012,
     color: '#1F2C3D',
-    logoUrl: `${LOGO_BASE}/1inch-network?w=64&h=64`,
+    logoUrl: `${LLAMA_BASE}/1inch-network?w=64&h=64`,
   },
 ];
 

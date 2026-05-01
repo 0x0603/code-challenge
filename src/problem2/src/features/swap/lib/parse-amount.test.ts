@@ -48,4 +48,21 @@ describe('stringifyAmount', () => {
   it('does not return scientific notation for typical swap amounts', () => {
     expect(stringifyAmount(1234.5678)).not.toMatch(/e/);
   });
+
+  it('caps the fractional part at 9 characters by default', () => {
+    const out = stringifyAmount(0.12345678999);
+    const frac = out.split('.')[1] ?? '';
+    expect(frac.length).toBeLessThanOrEqual(9);
+  });
+
+  it('avoids scientific notation for very small magnitudes', () => {
+    const out = stringifyAmount(0.00000001234);
+    expect(out).not.toMatch(/e/);
+    expect(out.startsWith('0.')).toBe(true);
+  });
+
+  it('honors a custom maxDecimals option', () => {
+    const out = stringifyAmount(0.123456789, { maxDecimals: 3 });
+    expect(out).toBe('0.123');
+  });
 });
