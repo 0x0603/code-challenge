@@ -2,15 +2,17 @@
  * Mock multi-DEX quote engine.
  *
  * The challenge brief lets us simulate the backend, so we model four
- * fictional DEXes with distinct fee structures and slippage curves.
- * Each curve takes the trade size in USD and returns a fractional
- * slippage that gets applied on top of the venue's flat fee.
+ * archetypes — constant-product AMM, central-limit orderbook, stable
+ * pool, and aggregator — branded with the real-world names users
+ * recognize (Uniswap, dYdX, Curve, 1inch). Each curve takes the trade
+ * size in USD and returns a fractional slippage applied on top of the
+ * venue's flat fee.
  *
- * The shapes are tuned so that the *ranking* of routes shifts with
- * trade size — small trades favor low-fee venues (OrderBook), large
- * trades favor flat-slippage pools (StablePool, Aggregator). That's
- * the "feature" RouteCompare reveals: the same swap is not a single
- * answer.
+ * The fee + slippage values are *not* the real venue parameters; they
+ * are tuned so the ranking shifts with trade size, which is the point
+ * of comparing. Small trades favor low-fee orderbooks (dYdX); large
+ * trades favor flat-slippage pools (Curve, 1inch). RouteCompare
+ * reveals that the same swap is not a single answer.
  */
 
 export type DexId = 'amm' | 'orderbook' | 'stable' | 'aggregator';
@@ -29,35 +31,35 @@ export type DexProfile = {
 export const DEX_PROFILES: readonly DexProfile[] = [
   {
     id: 'amm',
-    name: 'AMM-DEX',
-    tagline: 'Constant-product pool',
+    name: 'Uniswap',
+    tagline: 'Constant-product AMM',
     feeBps: 30,
     slippage: (usd) => 0.00005 * Math.sqrt(usd),
-    color: '#0F5132',
+    color: '#FF007A',
   },
   {
     id: 'orderbook',
-    name: 'OrderBook',
-    tagline: 'Limit-order matched',
+    name: 'dYdX',
+    tagline: 'Central-limit orderbook',
     feeBps: 5,
     slippage: (usd) => 0.0000012 * usd,
-    color: '#B45309',
+    color: '#6966FF',
   },
   {
     id: 'stable',
-    name: 'StablePool',
-    tagline: 'Curve-style stable pool',
+    name: 'Curve',
+    tagline: 'Stable pool with low slippage',
     feeBps: 20,
     slippage: () => 0.0008,
-    color: '#1E3A5F',
+    color: '#A6192E',
   },
   {
     id: 'aggregator',
-    name: 'Aggregator',
-    tagline: 'Splits across venues',
+    name: '1inch',
+    tagline: 'Aggregator across venues',
     feeBps: 10,
     slippage: () => 0.0012,
-    color: '#7C3AED',
+    color: '#1F2C3D',
   },
 ];
 

@@ -39,18 +39,21 @@ one motion.
 
 ### 2. Multi-DEX route comparison
 
-Four mock DEX profiles with distinct fee/slippage curves:
+Four DEX archetypes branded with the real-world names users recognize.
+The fee + slippage values are *not* the real venue parameters — they
+are tuned so the ranking shifts with trade size, which is the point of
+comparing.
 
-| DEX        | Fee   | Slippage shape                | Wins when    |
-|------------|-------|--------------------------------|--------------|
-| AMM-DEX    | 0.30% | square-root in trade size      | rarely       |
-| OrderBook  | 0.05% | linear in trade size           | small trades |
-| StablePool | 0.20% | flat 0.08%                     | large trades |
-| Aggregator | 0.10% | flat 0.12%                     | mid-size     |
+| DEX     | Fee   | Slippage shape            | Wins when    |
+|---------|-------|----------------------------|--------------|
+| Uniswap | 0.30% | square-root in trade size  | rarely       |
+| dYdX    | 0.05% | linear in trade size       | small trades |
+| Curve   | 0.20% | flat 0.08%                 | large trades |
+| 1inch   | 0.10% | flat 0.12%                 | mid-size     |
 
-The ranking *shifts* with trade size — that's the point of comparing.
-A pinned test (`routes.test.ts`) verifies OrderBook wins at $10 trades
-but loses at $100k trades.
+A pinned test (`routes.test.ts`) verifies dYdX wins at $10 trades but
+loses at $100k trades, so a future tweak doesn't accidentally make all
+routes look identical.
 
 Click any row to override the auto-best with a manual pick; the rate
 preview reads "via X (manual)" in amber so the cost of the override is
