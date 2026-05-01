@@ -1,10 +1,8 @@
 # 99TechSwap
 
-<p align="center">
-  <a href="https://code-challenge-sandy.vercel.app/">
-    <img src="https://img.shields.io/badge/▶%20Live%20Demo-code--challenge--sandy.vercel.app-000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live demo on Vercel" height="44" />
-  </a>
-</p>
+<h2 align="center">
+  ▶ Live demo: <a href="https://code-challenge-sandy.vercel.app/">code-challenge-sandy.vercel.app</a>
+</h2>
 
 > A swap form that takes the question seriously: **what does a user need to feel
 > good about sending money?**
