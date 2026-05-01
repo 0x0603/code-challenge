@@ -6,8 +6,6 @@ and best, tracks how the rate has moved since the user opened the pair, and
 puts a 15-second countdown on the quote so the displayed amount never lies
 about being stale.
 
-The brief is `src/problem2` from the [99tech / Switcheo code challenge](https://github.com/99techteam/code-challenge).
-
 > **Why "Compare, Route, Trust"** — these are the three product angles the
 > form is designed around. The brief asks for "a swap form"; the interesting
 > design question is *what does a user actually need to feel good about

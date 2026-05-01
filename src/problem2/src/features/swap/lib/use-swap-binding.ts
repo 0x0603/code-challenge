@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { SwapFormValues } from '../model/schema';
 import { parseAmount, sanitizeAmountInput, stringifyAmount } from './parse-amount';
@@ -6,19 +6,27 @@ import { parseAmount, sanitizeAmountInput, stringifyAmount } from './parse-amoun
 /**
  * Bidirectional binding between the pay and receive amount fields.
  *
- * The naive approach — using `watch()` on both fields and reacting in
- * effects — produces feedback loops (typing in pay updates receive,
- * which fires the receive watcher, which writes back to pay). Instead we
- * route every user-driven change through the explicit setters returned
- * here, and use a single effect to recompute the *other* side when the
- * exchange rate changes (e.g. on token swap).
+ * The naive two-way approach — using `watch()` on both fields and reacting
+ * in effects — produces feedback loops: typing 5 in receive updates pay,
+ * which on the next render with a recomputed best-route rate triggers a
+ * write back to receive. Each pass loses a small amount of precision and
+ * the displayed value drifts away from what the user typed.
+ *
+ * The fix is to remember which side the user last edited. Every time the
+ * rate changes (e.g. quote refresh, token change, route override), the
+ * effect recomputes only the *other* side, leaving the user's input
+ * untouched. The setters re-anchor the active side, so a flip from
+ * "I want to send X" to "I want to receive Y" works without churn.
  */
 export const useSwapBinding = (
   form: UseFormReturn<SwapFormValues>,
   rate: number | null,
 ) => {
+  const lastEditedRef = useRef<'pay' | 'receive'>('pay');
+
   const setPay = useCallback(
     (raw: string) => {
+      lastEditedRef.current = 'pay';
       const sanitized = sanitizeAmountInput(raw);
       form.setValue('payAmount', sanitized);
       form.clearErrors('payAmount');
@@ -34,6 +42,7 @@ export const useSwapBinding = (
 
   const setReceive = useCallback(
     (raw: string) => {
+      lastEditedRef.current = 'receive';
       const sanitized = sanitizeAmountInput(raw);
       form.setValue('receiveAmount', sanitized);
       form.clearErrors('payAmount');
@@ -47,15 +56,20 @@ export const useSwapBinding = (
     [form, rate],
   );
 
-  // When the rate moves under us — user picks a different token, prices
-  // refresh — keep the pay amount as the source of truth and recompute
-  // the receive amount. We don't write back to pay; that would surprise a
-  // user mid-typing.
+  // Rate changes during a session: token select, route override, quote
+  // refresh. Recompute the *other* side from the side the user last
+  // edited so their input value stays exactly as typed.
   useEffect(() => {
     if (rate === null) return;
-    const value = parseAmount(form.getValues('payAmount'));
-    if (value === null) return;
-    form.setValue('receiveAmount', stringifyAmount(value * rate));
+    if (lastEditedRef.current === 'pay') {
+      const value = parseAmount(form.getValues('payAmount'));
+      if (value === null) return;
+      form.setValue('receiveAmount', stringifyAmount(value * rate));
+    } else {
+      const value = parseAmount(form.getValues('receiveAmount'));
+      if (value === null) return;
+      form.setValue('payAmount', stringifyAmount(value / rate));
+    }
   }, [rate, form]);
 
   return { setPay, setReceive };

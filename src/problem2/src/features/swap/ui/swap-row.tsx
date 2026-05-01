@@ -16,7 +16,12 @@ type SwapRowProps = {
   balance?: number;
   /** Inline action rendered above the amount (e.g. Max button on pay row). */
   trailing?: ReactNode;
-  /** Read-only: receive row doesn't show balance/Max chips. */
+  /**
+   * Display-only mode: renders the amount as formatted text (with
+   * Uniswap-style subscript for tiny values) instead of an editable input.
+   * Used for the receive row, where the value is derived from the active
+   * route and shouldn't be typed directly.
+   */
   readOnly?: boolean;
 };
 
