@@ -9,8 +9,10 @@ import { Button } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
 import { SwapRow } from './swap-row';
 import { SwapDirectionButton } from './swap-direction-button';
+import { RouteCompare } from './route-compare';
 import { buildSwapSchema, type SwapFormValues } from '../model/schema';
 import { useExchangeRate } from '../lib/exchange-rate';
+import { useRoutes } from '../lib/use-routes';
 import { useSwapBinding } from '../lib/use-swap-binding';
 import { parseAmount, stringifyAmount } from '../lib/parse-amount';
 
@@ -54,14 +56,25 @@ export const SwapForm = () => {
 
   const fromToken = useToken(fromSymbol);
   const toToken = useToken(toSymbol);
-  const { rate } = useExchangeRate(fromSymbol, toSymbol);
+  const { rate: midRate } = useExchangeRate(fromSymbol, toSymbol);
+
+  // Routes are computed from the live pay amount; the best route's
+  // effective rate becomes the form's binding rate so the displayed
+  // receive matches what the user would actually get on-chain.
+  const amountIn = useMemo(() => parseAmount(payAmount), [payAmount]);
+  const { bestRoute } = useRoutes({
+    amountIn,
+    fromSymbol,
+    toSymbol,
+  });
+  const effectiveRate = bestRoute?.effectiveRate ?? midRate;
 
   const payBalance = useMemo(
     () => (fromToken ? mockBalance(fromToken.symbol, fromToken.priceUsd) : 0),
     [fromToken],
   );
 
-  const { setPay, setReceive } = useSwapBinding(form, rate);
+  const { setPay, setReceive } = useSwapBinding(form, effectiveRate);
 
   // Wire validation context (balance) only at submit time. Doing it here
   // keeps the schema referentially stable across renders so RHF doesn't
@@ -167,7 +180,14 @@ export const SwapForm = () => {
       <RatePreview
         fromSymbol={fromToken?.symbol}
         toSymbol={toToken?.symbol}
-        rate={rate}
+        rate={effectiveRate}
+        bestDexName={bestRoute?.dex.name}
+      />
+
+      <RouteCompare
+        amountIn={amountIn}
+        fromSymbol={fromSymbol}
+        toSymbol={toSymbol}
       />
 
       {firstError ? (
@@ -205,10 +225,12 @@ const RatePreview = ({
   fromSymbol,
   toSymbol,
   rate,
+  bestDexName,
 }: {
   fromSymbol: string | undefined;
   toSymbol: string | undefined;
   rate: number | null;
+  bestDexName: string | undefined;
 }) => {
   if (!fromSymbol || !toSymbol || rate === null) {
     return (
@@ -218,8 +240,15 @@ const RatePreview = ({
     );
   }
   return (
-    <div className="mt-5 text-sm text-ink-2 font-mono tabular text-center">
-      1 {fromSymbol} = {stringifyAmount(rate)} {toSymbol}
+    <div className="mt-5 text-center text-sm">
+      <div className="font-mono tabular text-ink-2">
+        1 {fromSymbol} = {stringifyAmount(rate)} {toSymbol}
+      </div>
+      {bestDexName ? (
+        <div className="text-xs text-ink-3 mt-1">
+          via <span className="text-ink-2 font-medium">{bestDexName}</span>
+        </div>
+      ) : null}
     </div>
   );
 };
