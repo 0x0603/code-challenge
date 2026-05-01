@@ -2,28 +2,33 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { formatTokenAmount, formatUsd } from '@/entities/token';
 import { cn } from '@/shared/lib/cn';
 import { useRoutes } from '../lib/use-routes';
-import type { QuoteRoute } from '../lib/routes';
+import type { DexId, QuoteRoute } from '../lib/routes';
 
 type RouteCompareProps = {
   amountIn: number | null;
   fromSymbol: string | null;
   toSymbol: string | null;
+  /** Currently active route — usually the best, or a user-overridden pick. */
+  activeDexId: DexId | null;
+  onSelect: (dexId: DexId) => void;
+  /** When true, clicks are ignored (form is in a confirming/success state). */
+  locked?: boolean;
 };
 
 /**
  * Ranks the available DEX routes for the current swap and renders them
- * as a list with the best one highlighted. The panel hides itself when
- * there's nothing meaningful to compare (no amount or no pair) so the
- * empty form stays calm.
- *
- * The list is the M5 minimum-viable signature feature. M6 layers in the
- * countdown and live refresh; M7 reads a "deal quality" score from the
- * same `routes` array so the same data drives multiple views.
+ * as a clickable list. Best route carries the green "Best" badge; the
+ * route the user is actually committing to carries a "Selected" border.
+ * The two often coincide; when they don't, the row layout makes the cost
+ * of the override legible (a negative delta below the amount).
  */
 export const RouteCompare = ({
   amountIn,
   fromSymbol,
   toSymbol,
+  activeDexId,
+  onSelect,
+  locked = false,
 }: RouteCompareProps) => {
   const { routes } = useRoutes({ amountIn, fromSymbol, toSymbol });
   const visible = routes.length > 0 && toSymbol !== null;
@@ -46,7 +51,7 @@ export const RouteCompare = ({
                 Routes
               </span>
               <span className="text-xs text-ink-3">
-                Best of {routes.length}
+                Tap to switch · Best of {routes.length}
               </span>
             </header>
             <ul className="divide-y divide-border-subtle">
@@ -56,6 +61,9 @@ export const RouteCompare = ({
                   route={route}
                   toSymbol={toSymbol ?? ''}
                   index={index}
+                  isActive={route.dex.id === activeDexId}
+                  onSelect={onSelect}
+                  locked={locked}
                 />
               ))}
             </ul>
@@ -66,60 +74,89 @@ export const RouteCompare = ({
   );
 };
 
+type RouteRowProps = {
+  route: QuoteRoute;
+  toSymbol: string;
+  index: number;
+  isActive: boolean;
+  onSelect: (id: DexId) => void;
+  locked: boolean;
+};
+
 const RouteRow = ({
   route,
   toSymbol,
   index,
-}: {
-  route: QuoteRoute;
-  toSymbol: string;
-  index: number;
-}) => {
+  isActive,
+  onSelect,
+  locked,
+}: RouteRowProps) => {
   const isBest = route.rank === 0;
   return (
     <motion.li
       initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.04, duration: 0.2 }}
-      className={cn(
-        'flex items-center gap-3 px-4 py-3',
-        isBest && 'bg-accent-soft/50',
-      )}
     >
-      <span
-        aria-hidden
-        className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-        style={{ backgroundColor: route.dex.color }}
-      />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className={cn('font-medium', isBest && 'text-ink-1')}>
-            {route.dex.name}
-          </span>
-          {isBest && (
-            <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">
-              Best
-            </span>
-          )}
-        </div>
-        <div className="text-xs text-ink-3 truncate">
-          {route.dex.tagline} · fee {(route.dex.feeBps / 100).toFixed(2)}% ·
-          slippage {(route.slippage * 100).toFixed(3)}%
-        </div>
-      </div>
-      <div className="text-right shrink-0">
-        <div className="font-mono tabular text-sm">
-          {formatTokenAmount(route.expectedReceive)} {toSymbol}
-        </div>
-        <div
+      <button
+        type="button"
+        onClick={() => onSelect(route.dex.id)}
+        disabled={locked}
+        aria-pressed={isActive}
+        className={cn(
+          'w-full flex items-center gap-3 px-4 py-3 text-left',
+          'transition-colors',
+          'hover:bg-accent-soft/40 focus-visible:outline-none focus-visible:bg-accent-soft/60',
+          isActive && 'bg-accent-soft',
+          'disabled:cursor-not-allowed',
+        )}
+      >
+        <span
+          aria-hidden
           className={cn(
-            'font-mono tabular text-xs',
-            isBest ? 'text-ink-3' : 'text-negative',
+            'inline-block h-2.5 w-2.5 rounded-full shrink-0',
+            isActive && 'ring-2 ring-offset-2 ring-offset-surface',
           )}
-        >
-          {isBest ? `fee ${formatUsd(route.feeUsd)}` : formatPercent(route.deltaFromBest)}
+          style={{
+            backgroundColor: route.dex.color,
+            boxShadow: isActive ? `0 0 0 2px rgb(var(--color-accent) / 0.4)` : undefined,
+          }}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className={cn('font-medium', isActive && 'text-ink-1')}>
+              {route.dex.name}
+            </span>
+            {isBest && (
+              <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">
+                Best
+              </span>
+            )}
+            {isActive && !isBest && (
+              <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">
+                Selected
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-ink-3 truncate">
+            {route.dex.tagline} · fee {(route.dex.feeBps / 100).toFixed(2)}% · slippage{' '}
+            {(route.slippage * 100).toFixed(3)}%
+          </div>
         </div>
-      </div>
+        <div className="text-right shrink-0">
+          <div className="font-mono tabular text-sm">
+            {formatTokenAmount(route.expectedReceive)} {toSymbol}
+          </div>
+          <div
+            className={cn(
+              'font-mono tabular text-xs',
+              isBest ? 'text-ink-3' : 'text-negative',
+            )}
+          >
+            {isBest ? `fee ${formatUsd(route.feeUsd)}` : formatPercent(route.deltaFromBest)}
+          </div>
+        </div>
+      </button>
     </motion.li>
   );
 };

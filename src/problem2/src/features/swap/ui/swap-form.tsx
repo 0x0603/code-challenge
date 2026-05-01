@@ -1,20 +1,22 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-  formatTokenAmount,
-  mockBalance,
-  useToken,
-} from '@/entities/token';
+import { mockBalance, useToken } from '@/entities/token';
 import { Button } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
 import { SwapRow } from './swap-row';
 import { SwapDirectionButton } from './swap-direction-button';
 import { RouteCompare } from './route-compare';
+import { CountdownRing } from './countdown-ring';
+import { SubmissionStatus } from './submission-status';
 import { buildSwapSchema, type SwapFormValues } from '../model/schema';
 import { useExchangeRate } from '../lib/exchange-rate';
 import { useRoutes } from '../lib/use-routes';
 import { useSwapBinding } from '../lib/use-swap-binding';
+import { useQuoteCountdown } from '../lib/use-quote-countdown';
+import { useQuoteRefresh } from '../lib/use-quote-refresh';
+import { useSwapSubmission } from '../lib/use-swap-submission';
 import { parseAmount, stringifyAmount } from '../lib/parse-amount';
+import type { DexId } from '../lib/routes';
 
 const DEFAULTS: SwapFormValues = {
   fromSymbol: 'SWTH',
@@ -23,27 +25,19 @@ const DEFAULTS: SwapFormValues = {
   receiveAmount: '',
 };
 
+const QUOTE_TTL_MS = 15_000;
+
 /**
- * The top-level swap form. Composes:
+ * Top-level swap form. Composes:
  *   - RHF state (string-typed values, validated lazily on submit)
- *   - useExchangeRate (rate from price feed)
- *   - useSwapBinding (pay ↔ receive cross-update)
- *   - SwapRow x2 + SwapDirectionButton
+ *   - useExchangeRate + useRoutes (best-route effective rate)
+ *   - useSwapBinding (pay ↔ receive cross-update on every keystroke)
+ *   - useQuoteCountdown (15s TTL ring; refetches the price feed on expire)
+ *   - useSwapSubmission (idle → confirming → success/error reducer)
  *
- * M5 will replace the fake submit with a quote engine; M6 wraps Confirm
- * in a state machine with a countdown. For M4 we surface the resolved
- * pair, rate, mock balance, and a Confirm gated by the schema.
+ * Each hook owns one concern; this component is just composition + layout.
  */
 export const SwapForm = () => {
-  const [submitted, setSubmitted] = useState<{
-    fromSymbol: string;
-    toSymbol: string;
-    pay: number;
-    receive: number;
-  } | null>(null);
-
-  // The RHF form holds raw string values so users can type partial inputs
-  // ("12.") without our validator coercing them to NaN mid-keystroke.
   const form = useForm<SwapFormValues>({
     defaultValues: DEFAULTS,
     mode: 'onSubmit',
@@ -58,16 +52,24 @@ export const SwapForm = () => {
   const toToken = useToken(toSymbol);
   const { rate: midRate } = useExchangeRate(fromSymbol, toSymbol);
 
-  // Routes are computed from the live pay amount; the best route's
-  // effective rate becomes the form's binding rate so the displayed
-  // receive matches what the user would actually get on-chain.
   const amountIn = useMemo(() => parseAmount(payAmount), [payAmount]);
-  const { bestRoute } = useRoutes({
-    amountIn,
-    fromSymbol,
-    toSymbol,
-  });
-  const effectiveRate = bestRoute?.effectiveRate ?? midRate;
+  const { routes, bestRoute } = useRoutes({ amountIn, fromSymbol, toSymbol });
+
+  // Manual route override. Defaults to null (= use the best). Resets when
+  // the pair changes — a user's preference for "AMM-DEX on the SWTH/ETH
+  // pair" doesn't carry over to a different pair, where it might no
+  // longer be available or sensible.
+  const [selectedDexId, setSelectedDexId] = useState<DexId | null>(null);
+  useEffect(() => {
+    setSelectedDexId(null);
+  }, [fromSymbol, toSymbol]);
+
+  const activeRoute = useMemo(() => {
+    if (!selectedDexId) return bestRoute;
+    return routes.find((r) => r.dex.id === selectedDexId) ?? bestRoute;
+  }, [routes, bestRoute, selectedDexId]);
+
+  const effectiveRate = activeRoute?.effectiveRate ?? midRate;
 
   const payBalance = useMemo(
     () => (fromToken ? mockBalance(fromToken.symbol, fromToken.priceUsd) : 0),
@@ -76,9 +78,16 @@ export const SwapForm = () => {
 
   const { setPay, setReceive } = useSwapBinding(form, effectiveRate);
 
-  // Wire validation context (balance) only at submit time. Doing it here
-  // keeps the schema referentially stable across renders so RHF doesn't
-  // re-resolve on every input keystroke.
+  const refreshQuote = useQuoteRefresh();
+  const { fraction: countdownFraction, remainingMs } = useQuoteCountdown({
+    active: amountIn !== null && amountIn > 0,
+    ttlMs: QUOTE_TTL_MS,
+    onExpire: refreshQuote,
+  });
+
+  const { state: submission, submit, reset: resetSubmission } = useSwapSubmission();
+  const isLocked = submission.phase === 'confirming' || submission.phase === 'success';
+
   const handleSubmit = form.handleSubmit(async (values) => {
     form.clearErrors();
     const schema = buildSwapSchema({ payBalance });
@@ -92,13 +101,12 @@ export const SwapForm = () => {
       }
       return;
     }
-    const pay = parseAmount(values.payAmount) ?? 0;
-    const receive = parseAmount(values.receiveAmount) ?? 0;
-    setSubmitted({
+    if (!fromToken || !toToken || !activeRoute) return;
+    submit({
       fromSymbol: values.fromSymbol ?? '',
       toSymbol: values.toSymbol ?? '',
-      pay,
-      receive,
+      pay: parseAmount(values.payAmount) ?? 0,
+      receive: activeRoute.expectedReceive,
     });
   });
 
@@ -128,6 +136,11 @@ export const SwapForm = () => {
     [form],
   );
 
+  const handleDismissSubmission = useCallback(() => {
+    resetSubmission();
+    form.reset(DEFAULTS);
+  }, [resetSubmission, form]);
+
   const errors = form.formState.errors;
   const firstError =
     errors.payAmount?.message ??
@@ -138,85 +151,101 @@ export const SwapForm = () => {
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="rounded-card bg-surface shadow-card border border-border-subtle p-6 sm:p-7"
+      className={cn(
+        'rounded-card bg-surface shadow-card border border-border-subtle p-6 sm:p-7',
+        'transition-opacity',
+        isLocked && 'opacity-95',
+      )}
     >
-      <div className="relative space-y-2">
-        <SwapRow
-          label="You pay"
-          amount={payAmount}
-          onAmountChange={setPay}
-          selectedSymbol={fromSymbol}
-          onSymbolChange={handleFromChange}
-          disabledSymbols={toSymbol ? [toSymbol] : []}
-          token={fromToken}
-          balance={payBalance}
-          trailing={
-            <button
-              type="button"
-              onClick={handleMax}
-              className="text-accent hover:underline font-medium tracking-wide"
-            >
-              Max
-            </button>
-          }
-        />
-        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 flex items-center pointer-events-none">
-          <div className="pointer-events-auto">
-            <SwapDirectionButton onClick={flip} disabled={!fromToken || !toToken} />
+      <fieldset disabled={isLocked} className="contents">
+        <div className="relative space-y-2">
+          <SwapRow
+            label="You pay"
+            amount={payAmount}
+            onAmountChange={setPay}
+            selectedSymbol={fromSymbol}
+            onSymbolChange={handleFromChange}
+            disabledSymbols={toSymbol ? [toSymbol] : []}
+            token={fromToken}
+            balance={payBalance}
+            trailing={
+              <button
+                type="button"
+                onClick={handleMax}
+                className="text-accent hover:underline font-medium tracking-wide disabled:opacity-50"
+                disabled={isLocked}
+              >
+                Max
+              </button>
+            }
+          />
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 flex items-center pointer-events-none">
+            <div className="pointer-events-auto">
+              <SwapDirectionButton
+                onClick={flip}
+                disabled={!fromToken || !toToken || isLocked}
+              />
+            </div>
           </div>
+          <SwapRow
+            label="You receive"
+            amount={receiveAmount}
+            onAmountChange={setReceive}
+            selectedSymbol={toSymbol}
+            onSymbolChange={handleToChange}
+            disabledSymbols={fromSymbol ? [fromSymbol] : []}
+            token={toToken}
+            readOnly
+          />
         </div>
-        <SwapRow
-          label="You receive"
-          amount={receiveAmount}
-          onAmountChange={setReceive}
-          selectedSymbol={toSymbol}
-          onSymbolChange={handleToChange}
-          disabledSymbols={fromSymbol ? [fromSymbol] : []}
-          token={toToken}
-          readOnly
+
+        <RatePreview
+          fromSymbol={fromToken?.symbol}
+          toSymbol={toToken?.symbol}
+          rate={effectiveRate}
+          activeDexName={activeRoute?.dex.name}
+          isOverride={selectedDexId !== null && activeRoute?.rank !== 0}
+          countdownActive={amountIn !== null && amountIn > 0}
+          remainingMs={remainingMs}
         />
-      </div>
 
-      <RatePreview
-        fromSymbol={fromToken?.symbol}
-        toSymbol={toToken?.symbol}
-        rate={effectiveRate}
-        bestDexName={bestRoute?.dex.name}
-      />
+        <RouteCompare
+          amountIn={amountIn}
+          fromSymbol={fromSymbol}
+          toSymbol={toSymbol}
+          activeDexId={activeRoute?.dex.id ?? null}
+          onSelect={setSelectedDexId}
+          locked={isLocked}
+        />
 
-      <RouteCompare
-        amountIn={amountIn}
-        fromSymbol={fromSymbol}
-        toSymbol={toSymbol}
-      />
+        {firstError ? (
+          <p role="alert" className="mt-3 text-sm text-negative">
+            {firstError}
+          </p>
+        ) : null}
 
-      {firstError ? (
-        <p
-          role="alert"
-          className="mt-3 text-sm text-negative"
+        <Button
+          type="submit"
+          size="lg"
+          fullWidth
+          loading={submission.phase === 'confirming'}
+          disabled={isLocked || !activeRoute}
+          leftSlot={
+            countdownFraction > 0 && submission.phase === 'idle' ? (
+              <CountdownRing fraction={countdownFraction} />
+            ) : null
+          }
+          className="mt-6"
         >
-          {firstError}
-        </p>
-      ) : null}
+          {submission.phase === 'confirming'
+            ? 'Submitting…'
+            : submission.phase === 'success'
+              ? 'Swap submitted'
+              : 'Confirm swap'}
+        </Button>
+      </fieldset>
 
-      <Button
-        type="submit"
-        size="lg"
-        fullWidth
-        className="mt-6"
-      >
-        Confirm swap
-      </Button>
-
-      {submitted ? (
-        <p className="mt-4 text-sm text-ink-2 text-center">
-          Submitted: {formatTokenAmount(submitted.pay)} {submitted.fromSymbol} →{' '}
-          {formatTokenAmount(submitted.receive)} {submitted.toSymbol}
-          <span className="block text-xs text-ink-3 mt-1">
-            (Quote lifecycle and confirmation flow ship in M6.)
-          </span>
-        </p>
-      ) : null}
+      <SubmissionStatus state={submission} onDismiss={handleDismissSubmission} />
     </form>
   );
 };
@@ -225,16 +254,22 @@ const RatePreview = ({
   fromSymbol,
   toSymbol,
   rate,
-  bestDexName,
+  activeDexName,
+  isOverride,
+  countdownActive,
+  remainingMs,
 }: {
   fromSymbol: string | undefined;
   toSymbol: string | undefined;
   rate: number | null;
-  bestDexName: string | undefined;
+  activeDexName: string | undefined;
+  isOverride: boolean;
+  countdownActive: boolean;
+  remainingMs: number;
 }) => {
   if (!fromSymbol || !toSymbol || rate === null) {
     return (
-      <div className={cn('mt-5 text-sm text-ink-3 font-mono tabular text-center')}>
+      <div className="mt-5 text-sm text-ink-3 font-mono tabular text-center">
         Rate unavailable
       </div>
     );
@@ -244,11 +279,23 @@ const RatePreview = ({
       <div className="font-mono tabular text-ink-2">
         1 {fromSymbol} = {stringifyAmount(rate)} {toSymbol}
       </div>
-      {bestDexName ? (
-        <div className="text-xs text-ink-3 mt-1">
-          via <span className="text-ink-2 font-medium">{bestDexName}</span>
-        </div>
-      ) : null}
+      <div className="text-xs text-ink-3 mt-1 flex items-center justify-center gap-2">
+        {activeDexName ? (
+          <span>
+            via{' '}
+            <span className={cn('font-medium', isOverride ? 'text-warning' : 'text-ink-2')}>
+              {activeDexName}
+            </span>
+            {isOverride ? <span className="ml-1">(manual)</span> : null}
+          </span>
+        ) : null}
+        {activeDexName && countdownActive ? <span aria-hidden>·</span> : null}
+        {countdownActive ? (
+          <span className="font-mono tabular">
+            refreshes in {Math.ceil(remainingMs / 1000)}s
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 };

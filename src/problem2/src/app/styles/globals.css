@@ -28,10 +28,12 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Editorial display utility — reserved for hero amounts only. */
+  /* Display utility for hero amounts and headings — Inter at semibold so
+     numbers carry presence without going thin like a display serif. */
   .display {
-    @apply font-serif tracking-tight;
-    font-feature-settings: 'liga', 'dlig';
+    @apply font-sans tracking-tight tabular;
+    font-weight: 600;
+    letter-spacing: -0.03em;
   }
 
   /* Hide arrows on number inputs — we render our own context (USD, balance). */
