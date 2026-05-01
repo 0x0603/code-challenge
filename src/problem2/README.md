@@ -18,7 +18,7 @@ about being stale.
 pnpm install
 pnpm dev          # http://localhost:5173
 pnpm build        # type-check + production bundle
-pnpm test         # 30 unit tests
+pnpm test         # 40 unit tests
 pnpm typecheck    # tsc --noEmit
 pnpm lint         # eslint flat-config, no warnings allowed
 ```
@@ -27,13 +27,23 @@ Node ≥ 20. Uses pnpm but `npm install && npm run dev` works too.
 
 ## Walkthrough
 
-### 1. Editable form, derived receive
+### 1. Editable form, two-way without drift
 
-The pay amount is the source of truth. As the user types, the receive
-amount is computed from the active route's effective rate, USD values
-update on both sides, and a 2-way binding allows typing into the receive
-field as well. Direction flip swaps both the symbols *and* the amounts in
-one motion.
+Both rows are editable. Typing in pay computes receive from the active
+route's effective rate; typing in receive computes pay from the inverse.
+Direction flip swaps both the symbols *and* the amounts in one motion.
+
+Two-way binding has a classic feedback-loop trap: typing 5 in receive
+shifts pay, the new amount changes which route wins, the rate-change
+effect fires, and receive gets silently rewritten as pay × new_rate.
+Each pass shaves a fraction off until the typed "5" reads "4.989006".
+The fix is a single ref tracking which side the user last edited; the
+rate-change effect now recomputes only the *other* side, so a typed
+value stays exactly as typed.
+
+USD subtitles render under each amount via `formatTokenAmount`, which
+collapses sub-0.0001 values into Uniswap-style subscript notation
+(`0.0₅2453`) so a long string of zeros never has to be parsed by eye.
 
 ### 2. Multi-DEX route comparison
 
@@ -79,8 +89,18 @@ plumbing.
 
 Confirm submits via a small reducer:
 `idle → confirming → success | error`. Mocked with a 1.5s latency and a
-5% failure rate so the error path is reachable in demos. The form
-fieldset is `disabled` during confirming so inputs can't change mid-flight.
+5% failure rate so the error path is reachable in demos. While in
+`confirming`, the form `fieldset` is `disabled` and a pill below
+Confirm shows the in-flight summary so the form context stays readable.
+
+`success` and `error` open a centered Modal with a backdrop blur and a
+focus trap — an inline confirmation was too easy to miss for an action
+that, in production, moves real money. The success modal hosts an
+animated check, a sent → received receipt with USD subtitles, the
+route credit ("Routed via Curve"), a click-to-copy transaction id, and
+a single full-width **Done** button so the next step is unmissable.
+Dismissing also resets the form and clears any manual route override
+so the next swap starts fresh.
 
 ### 5. Theme + accessibility
 
@@ -141,8 +161,9 @@ is testable without React. Hooks (`use-*.ts`) own one concern each.
   flash an error)
 - **Framer Motion** — countdown ring drain, route-row stagger, modal
   enter/exit
-- **Vitest + Testing Library** — pure functions covered with unit tests
-  (parse-amount, routes ranking, deal quality)
+- **Vitest + Testing Library** — 40 unit tests covering parse-amount,
+  amount formatting (incl. subscript notation), routes ranking, deal
+  quality, and the prices-feed dedupe
 
 The longer "why" (and what we considered and rejected) is in
 [`DECISIONS.md`](./DECISIONS.md).
