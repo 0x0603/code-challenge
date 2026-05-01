@@ -8,6 +8,7 @@ import { SwapDirectionButton } from './swap-direction-button';
 import { RouteCompare } from './route-compare';
 import { CountdownRing } from './countdown-ring';
 import { SubmissionStatus } from './submission-status';
+import { DealQualityCard } from './deal-quality-card';
 import { buildSwapSchema, type SwapFormValues } from '../model/schema';
 import { useExchangeRate } from '../lib/exchange-rate';
 import { useRoutes } from '../lib/use-routes';
@@ -15,6 +16,8 @@ import { useSwapBinding } from '../lib/use-swap-binding';
 import { useQuoteCountdown } from '../lib/use-quote-countdown';
 import { useQuoteRefresh } from '../lib/use-quote-refresh';
 import { useSwapSubmission } from '../lib/use-swap-submission';
+import { useRateHistory } from '../lib/use-rate-history';
+import { computeDealQuality } from '../lib/deal-quality';
 import { parseAmount, stringifyAmount } from '../lib/parse-amount';
 import type { DexId } from '../lib/routes';
 
@@ -87,6 +90,21 @@ export const SwapForm = () => {
 
   const { state: submission, submit, reset: resetSubmission } = useSwapSubmission();
   const isLocked = submission.phase === 'confirming' || submission.phase === 'success';
+
+  const pairKey =
+    fromSymbol && toSymbol ? `${fromSymbol}-${toSymbol}` : null;
+  const rateHistory = useRateHistory(pairKey, midRate);
+
+  const dealQuality = useMemo(() => {
+    if (!activeRoute || !toToken || amountIn === null || amountIn <= 0) return null;
+    return computeDealQuality({
+      active: activeRoute,
+      routes,
+      midRate: midRate ?? activeRoute.effectiveRate,
+      amountIn,
+      toPriceUsd: toToken.priceUsd,
+    });
+  }, [activeRoute, routes, midRate, amountIn, toToken]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     form.clearErrors();
@@ -208,6 +226,14 @@ export const SwapForm = () => {
           countdownActive={amountIn !== null && amountIn > 0}
           remainingMs={remainingMs}
         />
+
+        {dealQuality && toToken ? (
+          <DealQualityCard
+            quality={dealQuality}
+            history={rateHistory}
+            toSymbol={toToken.symbol}
+          />
+        ) : null}
 
         <RouteCompare
           amountIn={amountIn}
