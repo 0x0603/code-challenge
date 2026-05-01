@@ -1,19 +1,15 @@
-import { Button } from '@/shared/ui';
-import {
-  TokenIcon,
-  formatTokenAmount,
-  formatUsd,
-  mockBalance,
-  useTokens,
-} from '@/entities/token';
+import { useState } from 'react';
+import { TokenSelect } from '@/features/swap';
 
 /**
- * Page shell — the SwapForm itself lands here in M4. For M2 it renders the
- * full token list pulled from the live feed so we can confirm fetch +
- * dedupe + icons + formatting work before any feature code is written.
+ * Page shell — for M3 the SwapForm is still a placeholder, but the two
+ * TokenSelect chips already exercise the modal, recent-tokens persistence,
+ * and the mutual-disable rule (you can't pick the same token on both
+ * sides). The full form lands in M4.
  */
 export const SwapPage = () => {
-  const { data: tokens, isLoading, error } = useTokens();
+  const [fromSymbol, setFromSymbol] = useState<string | null>('SWTH');
+  const [toSymbol, setToSymbol] = useState<string | null>('ETH');
 
   return (
     <main className="min-h-dvh flex flex-col items-center px-4 pt-16 pb-24">
@@ -22,7 +18,7 @@ export const SwapPage = () => {
           <span aria-hidden className="inline-block h-3 w-3 rounded-full bg-accent" />
           <span className="font-medium tracking-tight">FlowSwap</span>
         </div>
-        <span className="text-xs text-ink-3 font-mono">v0.2 · entities</span>
+        <span className="text-xs text-ink-3 font-mono">v0.3 · token select</span>
       </header>
 
       <section className="w-full max-w-[520px]">
@@ -32,51 +28,43 @@ export const SwapPage = () => {
           and confirm before the quote expires.
         </p>
 
-        <div className="rounded-card bg-surface shadow-card border border-border-subtle p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-medium">Token feed (M2 smoke test)</h2>
-            <Button size="sm" variant="ghost">
-              {isLoading ? 'Loading' : `${tokens?.length ?? 0} tokens`}
-            </Button>
-          </div>
-
-          {error ? (
-            <p className="text-sm text-negative">Failed to load tokens: {String(error)}</p>
-          ) : null}
-
-          {tokens ? (
-            <ul className="divide-y divide-border-subtle">
-              {tokens.slice(0, 8).map((token) => {
-                const balance = mockBalance(token.symbol, token.priceUsd);
-                return (
-                  <li
-                    key={token.symbol}
-                    className="flex items-center justify-between py-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <TokenIcon symbol={token.symbol} iconUrl={token.iconUrl} />
-                      <div>
-                        <div className="font-medium">{token.symbol}</div>
-                        <div className="text-xs text-ink-3 font-mono tabular">
-                          {formatUsd(token.priceUsd)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-mono tabular text-sm">
-                        {formatTokenAmount(balance)}
-                      </div>
-                      <div className="text-xs text-ink-3 font-mono tabular">
-                        {formatUsd(balance * token.priceUsd)}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
+        <div className="rounded-card bg-surface shadow-card border border-border-subtle p-6 space-y-4">
+          <TokenSelectRow
+            label="You pay"
+            value={fromSymbol}
+            onChange={setFromSymbol}
+            disabled={toSymbol ? [toSymbol] : []}
+          />
+          <TokenSelectRow
+            label="You receive"
+            value={toSymbol}
+            onChange={setToSymbol}
+            disabled={fromSymbol ? [fromSymbol] : []}
+          />
+          <p className="text-xs text-ink-3 mt-6">
+            Smoke test for M3 — recent tokens persist across reload, the other side is
+            disabled to prevent same-token swaps. SwapForm with amounts and validation
+            ships in M4.
+          </p>
         </div>
       </section>
     </main>
   );
 };
+
+const TokenSelectRow = ({
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (s: string) => void;
+  disabled: readonly string[];
+}) => (
+  <div className="flex items-center justify-between rounded-input bg-bg/50 px-4 py-4 border border-border-subtle">
+    <span className="text-sm text-ink-2">{label}</span>
+    <TokenSelect value={value} onChange={onChange} disabledSymbols={disabled} ariaLabel={label} />
+  </div>
+);
