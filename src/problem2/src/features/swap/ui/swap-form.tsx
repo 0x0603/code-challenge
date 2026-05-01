@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { mockBalance, useToken } from '@/entities/token';
+import { formatTokenAmount, mockBalance, useToken } from '@/entities/token';
 import { Button } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
 import { SwapRow } from './swap-row';
@@ -303,7 +303,7 @@ const RatePreview = ({
   return (
     <div className="mt-5 text-center text-sm">
       <div className="font-mono tabular text-ink-2">
-        1 {fromSymbol} = {stringifyAmount(rate)} {toSymbol}
+        1 {fromSymbol} = {formatTokenAmount(rate)} {toSymbol}
       </div>
       <div className="text-xs text-ink-3 mt-1 flex items-center justify-center gap-2">
         {activeDexName ? (
