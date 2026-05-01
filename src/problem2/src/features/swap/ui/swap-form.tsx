@@ -79,6 +79,8 @@ export const SwapForm = () => {
     [fromToken],
   );
 
+  const exceedsBalance = amountIn !== null && amountIn > 0 && amountIn > payBalance;
+
   const { setPay, setReceive } = useSwapBinding(form, effectiveRate);
 
   const refreshQuote = useQuoteRefresh();
@@ -188,6 +190,7 @@ export const SwapForm = () => {
             disabledSymbols={toSymbol ? [toSymbol] : []}
             token={fromToken}
             balance={payBalance}
+            balanceExceeded={exceedsBalance}
             trailing={
               <button
                 type="button"
@@ -257,9 +260,11 @@ export const SwapForm = () => {
           size="lg"
           fullWidth
           loading={submission.phase === 'confirming'}
-          disabled={isLocked || !activeRoute}
+          disabled={isLocked || !activeRoute || exceedsBalance}
           leftSlot={
-            countdownFraction > 0 && submission.phase === 'idle' ? (
+            countdownFraction > 0 &&
+            submission.phase === 'idle' &&
+            !exceedsBalance ? (
               <CountdownRing fraction={countdownFraction} />
             ) : null
           }
@@ -269,7 +274,9 @@ export const SwapForm = () => {
             ? 'Submitting…'
             : submission.phase === 'success'
               ? 'Swap submitted'
-              : 'Confirm swap'}
+              : exceedsBalance
+                ? 'Insufficient balance'
+                : 'Confirm swap'}
         </Button>
       </fieldset>
 

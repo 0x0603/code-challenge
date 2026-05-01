@@ -23,6 +23,8 @@ type SwapRowProps = {
    * route and shouldn't be typed directly.
    */
   readOnly?: boolean;
+  /** Renders the balance label and the input in a warning tone. */
+  balanceExceeded?: boolean;
 };
 
 /**
@@ -45,19 +47,30 @@ export const SwapRow = ({
   balance,
   trailing,
   readOnly = false,
+  balanceExceeded = false,
 }: SwapRowProps) => {
   const numericAmount = parseAmount(amount);
   const usdValue =
     numericAmount !== null && token ? numericAmount * token.priceUsd : null;
 
   return (
-    <div className="rounded-input bg-bg/50 dark:bg-bg/30 border border-border-subtle px-5 py-4">
+    <div
+      className={cn(
+        'rounded-input bg-bg/50 dark:bg-bg/30 border px-5 py-4 transition-colors',
+        balanceExceeded ? 'border-negative/50' : 'border-border-subtle',
+      )}
+    >
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs uppercase tracking-wider text-ink-3">
           {label}
         </span>
         {!readOnly && balance !== undefined ? (
-          <span className="text-xs text-ink-3 font-mono tabular">
+          <span
+            className={cn(
+              'text-xs font-mono tabular',
+              balanceExceeded ? 'text-negative font-medium' : 'text-ink-3',
+            )}
+          >
             Balance {formatTokenAmount(balance)}
           </span>
         ) : null}
