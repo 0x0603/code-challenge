@@ -1,10 +1,10 @@
-# FlowSwap
+# 99TechSwap
 
 > A swap form that takes the question seriously: **what does a user need to feel
 > good about sending money?**
 
 Most swap UIs answer "how do I send tokens"; the more interesting answer is
-"how does the form earn the user's trust to press Confirm". FlowSwap is
+"how does the form earn the user's trust to press Confirm". 99TechSwap is
 shaped around that second question — a Ledger-style two-column layout where
 the left side captures intent and the right side answers *which DEX gives me
 the best deal right now, and how long is that quote good for*.
@@ -29,86 +29,139 @@ Node ≥ 20. `npm` works too — pnpm is just what I used.
 
 ---
 
-## What it does
+## Product thinking
 
-### 1. The form (left column)
+Each section below is framed as **the friction we believe a real user
+hits → the hypothesis we tested → what we'd watch in production**.
+Implementation is in the architecture section; this one is about why
+the things exist.
 
-Two rows, both editable. Typing in **You pay** computes the receive amount
-from the active route's effective rate. Typing in **You receive** inverts the
-math the same way. The direction-flip button between the two swaps both the
-symbols *and* the amounts in one motion, so you don't lose your number when
-you change your mind.
+### Markets panel turns the empty state into a conversion surface
 
-Live affordances on the pay row:
+**Friction.** A swap form with no amount entered is dead screen
+real-estate. The user lands on the page with nothing happening, no
+reason to engage, and a high chance of bouncing.
 
-- **Balance label** flips to a soft red and the input border turns negative
-  the moment the entered amount exceeds the mock balance — no waiting until
-  Confirm to find out you're over.
-- **Max** writes the full balance into the input.
-- **USD subtitle** under each amount so the trade size is legible at a glance.
-- **Insufficient balance** state on Confirm: button copy changes, click is
-  blocked, and the countdown ring hides because refreshing won't fix the gap.
+**Hypothesis.** If the right side of the form *always* surfaces
+something interesting — stablecoin yields, trending assets — the user
+finds a reason to start. Picking a token lifts it into the receive
+slot, so the cognitive distance from "I'm bored" to "I'm typing an
+amount" is one click.
 
-### 2. The quotes panel (right column)
+**What we'd watch.** *Empty-state CTR* (clicks on a market token) and
+the *form-fill rate* (% of sessions that put a number in the pay
+input). The card design copies Ledger's swap surface where this
+pattern was clearly load-bearing.
 
-Two modes, the same panel:
+### Live multi-DEX comparison earns the "good deal" feeling
 
-**Empty (no amount yet)** — instead of a placeholder, the panel shows
-**Stablecoins** with mock APYs and **Trending Assets** with mock 24h deltas,
-sorted descending. Clicking any token lifts it into the receive slot. The
-data is deterministically derived from each symbol's hash so reload doesn't
-shuffle it; the disclaimer beneath the list says it's mocked.
+**Friction.** A single rate on the screen makes the user wonder *am I
+being ripped off?* In crypto especially, that doubt is the gap where
+sessions die. Open another tab, check Uniswap, never come back.
 
-**Active (amount entered)** — live route comparison across four mock DEXes:
+**Hypothesis.** Showing four prices side by side, with the best one
+highlighted and the rest sorted, *proves* the form went looking for the
+user. It reframes the moment from "do I trust this number?" to "this
+is the best available — and I can see why."
 
-| DEX     | Brand     | Fee   | Slippage shape            | Wins when    |
-|---------|-----------|-------|----------------------------|--------------|
-| Uniswap | pink      | 0.30% | square-root in trade size  | rarely       |
-| dYdX    | violet    | 0.05% | linear in trade size       | small trades |
-| Curve   | red       | 0.20% | flat 0.08%                 | large trades |
-| 1inch   | navy      | 0.10% | flat 0.12%                 | mid-size     |
+**What we'd watch.** *Confirm-rate after the routes panel renders*,
+and the share of confirmed swaps that took the auto-best vs a manual
+pick. The fee/slippage curves are tuned so the ranking actually shifts
+with trade size (a pinned test verifies dYdX wins at $10 but loses at
+$100k); a single static answer would not survive that test, and the
+panel would feel like decoration.
 
-Each row is a clickable card with the venue's brand logo (real images, with
-a colored letter-square fallback), the network fee in USD, and the receive
-amount + USD value. The top route gets its own **Best quote** callout; the
-rest sit under **More quotes**.
+### Quote countdown sets honest expectations
 
-A live MM:SS countdown in the panel header tells the user how long the
-displayed numbers are valid; when it hits zero, the price feed is
-invalidated through TanStack Query and the routes recompute. Last 5
-seconds of each cycle the countdown shifts to amber so the user has time
-to act before the refresh.
+**Friction.** Stale prices are a trust-killer. User signs at one
+number, settles at another, blames the form.
 
-The fee + slippage values are *not* the real venue parameters — they're
-tuned so the **ranking actually shifts** with trade size (a pinned test
-verifies dYdX wins at $10 trades but loses at $100k). The point of the
-panel is that the same swap is not a single answer.
+**Hypothesis.** A visible MM:SS countdown turns staleness from a
+hidden risk into an explicit promise: "this number is good for ~12
+more seconds." Auto-refresh on expiry means the user can stop second-
+guessing — *if I see a number, it's fresh enough to act on*.
 
-### 3. The Confirm flow
+**What we'd watch.** *Slippage complaints / support tickets per swap*,
+and *time-to-confirm after the panel appears*. The amber tint in the
+last 5s is a deliberate "act now" cue without being alarmist.
 
-Clicking Confirm enters a **state machine**:
-`idle → confirming → success | error`. The form fieldset is `disabled`
-during confirming so inputs can't change mid-flight. A 1.5s mock latency
-fronts the result, and a 5% mock failure rate keeps the error path
-reachable in demos.
+### Live insufficient-balance feedback removes the failed click
 
-`success` and `error` open a centered Modal with backdrop blur and a focus
-trap. Inline confirmation cards turned out too easy to miss — for an
-action that, in production, moves real money, the modal forces explicit
-acknowledgement. The success modal hosts an animated check, a
-sent → received receipt with USD subtitles, the route credit ("Routed via
-Curve"), a click-to-copy transaction id, and a single full-width **Done**
-button so the next step is unmissable.
+**Friction.** Typing past your balance and only finding out at Confirm
+is a form-abandonment classic. The user feels punished for trying.
 
-### 4. Theme + a11y
+**Hypothesis.** The moment the input exceeds the balance, the row
+border turns red, the balance label weighs up, and the Confirm button
+copy switches to "Insufficient balance". The user sees the constraint
+*as they type* — the failed click never happens. Max becomes the
+discovery: "oh, I can just use the whole thing."
 
-- **Light / Dark / System** toggle in the header. System is the default and
-  tracks the OS preference automatically.
-- **Keyboard nav** in TokenSelect (Arrow / Enter / Esc) plus auto-focus on
-  open and focus restore on close.
-- **Focus trap** inside Modal via a custom `useFocusTrap` hook.
-- All color tokens live as CSS variables so dark mode is one block of
-  overrides, not a fork.
+**What we'd watch.** *Confirm-click failure rate* (should drop to ~0)
+and *Max-button usage* (a positive signal that users feel safe topping
+out).
+
+### Receive editable serves the "exactly Y" trader
+
+**Friction.** A common intent shape is *I need exactly 5 ETH for this
+purchase, what does it cost me?* Read-only receive blocks that flow
+entirely.
+
+**Hypothesis.** Two-way binding makes the form work for both intent
+shapes (send X / receive Y). The drift fix (a `lastEditedRef` that
+freezes the side the user is currently typing into) is the price of
+admission — without it, typing 5 in receive could echo back as
+4.989006 within one render, which feels like the form is fighting the
+user.
+
+**What we'd watch.** *Share of swaps initiated from the receive
+field*. If it's near zero we lose nothing keeping the field live; if
+it's non-trivial we've served users a flow many DEXes don't.
+
+### Subscript notation makes tiny prices readable
+
+**Friction.** "0.00000245322" looks like a bug. The user has to count
+zeros, and the visual weight of the number is way out of proportion to
+its meaning.
+
+**Hypothesis.** Uniswap's subscript pattern — `0.0₅2453` — collapses
+the leading zeros into a count and makes the magnitude readable at a
+glance. The user reads "five-zero magnitude, ~2.5e-6" the same way
+they'd read a normal price.
+
+**What we'd watch.** *Bounce rate on long-tail pairs* (high-magnitude
+gaps like SWTH ↔ ETH where readable subscript helps most), and
+qualitative: do users still flag the number as "broken"?
+
+### Modal success closes the loop
+
+**Friction.** Inline success cards under the Confirm button were too
+easy to miss. A user clicks Confirm, sees no clear feedback, clicks
+again. In production that's a duplicate transaction — in the demo
+it's just confusing.
+
+**Hypothesis.** A centered modal with a backdrop blur, an animated
+check, a clean sent → received receipt, and a single full-width Done
+button forces *explicit acknowledgement*. The user can't accidentally
+move on. Click-to-copy on the tx id signals "this is real, here's
+your proof".
+
+**What we'd watch.** *Duplicate-Confirm rate* (should be ~0) and
+*post-success retention* (do users come back to swap again that
+session, or do they bounce after a swap?). For an action that moves
+real money, ceremony around success is worth the extra modal.
+
+### Theme + a11y reduce environmental friction
+
+**Friction.** A user on a dark OS hitting a hard-light page bounces.
+Keyboard-only users hitting a mouse-only modal bounce.
+
+**Hypothesis.** System-default theme + manual override + focus traps
++ Esc-to-close + Arrow/Enter list navigation are the table stakes
+that *don't* show up in conversion until you're missing them.
+
+**What we'd watch.** *Bounce rate by `prefers-color-scheme`*, and
+keyboard-event share on the form (a sanity check that nothing breaks
+without a mouse).
 
 ---
 
