@@ -34,8 +34,8 @@ export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(
         onChange={(e) => onChange(e.target.value)}
         placeholder="0"
         className={cn(
-          'display text-[44px] sm:text-[52px] leading-[1.05] tracking-tight',
-          'w-full bg-transparent outline-none',
+          'display text-[32px] sm:text-[44px] md:text-[52px] leading-[1.05] tracking-tight',
+          'w-full min-w-0 bg-transparent outline-none',
           'text-ink-1 placeholder:text-ink-3/50',
           'caret-accent',
           className,

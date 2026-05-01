@@ -123,8 +123,8 @@ const RouteRow = ({
           }}
         />
         <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
-            <span className={cn('font-medium', isActive && 'text-ink-1')}>
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className={cn('font-medium text-sm sm:text-base', isActive && 'text-ink-1')}>
               {route.dex.name}
             </span>
             {isBest && (
@@ -138,18 +138,17 @@ const RouteRow = ({
               </span>
             )}
           </div>
-          <div className="text-xs text-ink-3 truncate">
-            {route.dex.tagline} · fee {(route.dex.feeBps / 100).toFixed(2)}% · slippage{' '}
-            {(route.slippage * 100).toFixed(3)}%
+          <div className="text-[11px] sm:text-xs text-ink-3 truncate">
+            {route.dex.tagline} · fee {(route.dex.feeBps / 100).toFixed(2)}%
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="font-mono tabular text-sm">
+          <div className="font-mono tabular text-xs sm:text-sm">
             {formatTokenAmount(route.expectedReceive)} {toSymbol}
           </div>
           <div
             className={cn(
-              'font-mono tabular text-xs',
+              'font-mono tabular text-[11px] sm:text-xs',
               isBest ? 'text-ink-3' : 'text-negative',
             )}
           >
