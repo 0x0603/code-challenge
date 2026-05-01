@@ -1,26 +1,34 @@
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { formatTokenAmount, formatUsd } from '@/entities/token';
+import { formatTokenAmount, formatUsd, useToken } from '@/entities/token';
 import { cn } from '@/shared/lib/cn';
 import { useRoutes } from '../lib/use-routes';
+import { MarketSidebar } from './market-sidebar';
 import type { DexId, QuoteRoute } from '../lib/routes';
 
 type RouteCompareProps = {
   amountIn: number | null;
   fromSymbol: string | null;
   toSymbol: string | null;
-  /** Currently active route — usually the best, or a user-overridden pick. */
   activeDexId: DexId | null;
   onSelect: (dexId: DexId) => void;
-  /** When true, clicks are ignored (form is in a confirming/success state). */
   locked?: boolean;
+  /** Live MM:SS countdown until the quote refresh cycle. */
+  remainingMs: number;
+  countdownActive: boolean;
+  /** Called when the user picks a market token (lifts into the receive slot). */
+  onPickMarketToken: (symbol: string) => void;
 };
 
 /**
- * Ranks the available DEX routes for the current swap and renders them
- * as a clickable list. Best route carries the green "Best" badge; the
- * route the user is actually committing to carries a "Selected" border.
- * The two often coincide; when they don't, the row layout makes the cost
- * of the override legible (a negative delta below the amount).
+ * Quote selection panel, Ledger-style. The best route gets its own
+ * "Best quote" section with a highlighted card; the rest fall under
+ * "More quotes" as a compact list. A live MM:SS countdown sits in the
+ * header so the user knows how long the displayed numbers remain valid.
+ *
+ * The panel always renders so the page layout doesn't shift when an
+ * amount is entered or cleared. Empty state explains what's needed
+ * to see live quotes.
  */
 export const RouteCompare = ({
   amountIn,
@@ -29,139 +37,242 @@ export const RouteCompare = ({
   activeDexId,
   onSelect,
   locked = false,
+  remainingMs,
+  countdownActive,
+  onPickMarketToken,
 }: RouteCompareProps) => {
   const { routes } = useRoutes({ amountIn, fromSymbol, toSymbol });
-  const visible = routes.length > 0 && toSymbol !== null;
+  const toToken = useToken(toSymbol);
+  const hasRoutes = routes.length > 0;
+  const [bestRoute, ...moreRoutes] = routes;
 
   return (
-    <AnimatePresence initial={false}>
-      {visible && (
-        <motion.section
-          key="routes"
-          initial={{ opacity: 0, y: -8, height: 0 }}
-          animate={{ opacity: 1, y: 0, height: 'auto' }}
-          exit={{ opacity: 0, y: -8, height: 0 }}
-          transition={{ duration: 0.24, ease: [0.32, 0.72, 0, 1] }}
-          className="overflow-hidden"
-          aria-label="Available swap routes"
-        >
-          <div className="mt-6 rounded-input border border-border-subtle bg-bg/40 dark:bg-bg/20">
-            <header className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
-              <span className="text-xs uppercase tracking-wider text-ink-3">
-                Routes
-              </span>
-              <span className="text-xs text-ink-3">
-                Tap to switch · Best of {routes.length}
-              </span>
-            </header>
-            <ul className="divide-y divide-border-subtle">
-              {routes.map((route, index) => (
-                <RouteRow
-                  key={route.dex.id}
-                  route={route}
+    <section
+      className="rounded-card bg-surface border border-border-subtle p-5 sm:p-6 h-full"
+      aria-label="Swap quotes"
+    >
+      <header className="flex items-center justify-between mb-5">
+        <h3 className="text-base font-medium tracking-tight">
+          {hasRoutes ? 'Select a quote' : 'Markets'}
+        </h3>
+        {hasRoutes && countdownActive ? (
+          <CountdownTimer remainingMs={remainingMs} />
+        ) : null}
+      </header>
+
+      <AnimatePresence mode="wait" initial={false}>
+        {!hasRoutes ? (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <MarketSidebar onSelectToken={onPickMarketToken} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="routes"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="space-y-5"
+          >
+            {bestRoute && (
+              <Section title="Best quote" hint="Most you'll receive after fees">
+                <QuoteCard
+                  route={bestRoute}
                   toSymbol={toSymbol ?? ''}
-                  index={index}
-                  isActive={route.dex.id === activeDexId}
+                  toPriceUsd={toToken?.priceUsd}
+                  isActive={bestRoute.dex.id === activeDexId}
+                  isBest
                   onSelect={onSelect}
                   locked={locked}
                 />
-              ))}
-            </ul>
-          </div>
-        </motion.section>
-      )}
-    </AnimatePresence>
+              </Section>
+            )}
+
+            {moreRoutes.length > 0 && (
+              <Section title="More quotes">
+                <div className="space-y-2">
+                  {moreRoutes.map((route) => (
+                    <QuoteCard
+                      key={route.dex.id}
+                      route={route}
+                      toSymbol={toSymbol ?? ''}
+                      toPriceUsd={toToken?.priceUsd}
+                      isActive={route.dex.id === activeDexId}
+                      onSelect={onSelect}
+                      locked={locked}
+                    />
+                  ))}
+                </div>
+              </Section>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
   );
 };
 
-type RouteRowProps = {
+const Section = ({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) => (
+  <div>
+    <div className="flex items-baseline justify-between mb-2 px-1">
+      <h4 className="text-sm font-medium text-ink-2">{title}</h4>
+      {hint ? <span className="text-[11px] text-ink-3">{hint}</span> : null}
+    </div>
+    {children}
+  </div>
+);
+
+type QuoteCardProps = {
   route: QuoteRoute;
   toSymbol: string;
-  index: number;
+  toPriceUsd: number | undefined;
   isActive: boolean;
+  isBest?: boolean;
   onSelect: (id: DexId) => void;
   locked: boolean;
 };
 
-const RouteRow = ({
+const QuoteCard = ({
   route,
   toSymbol,
-  index,
+  toPriceUsd,
   isActive,
+  isBest = false,
   onSelect,
   locked,
-}: RouteRowProps) => {
-  const isBest = route.rank === 0;
+}: QuoteCardProps) => {
+  const usd = toPriceUsd ? route.expectedReceive * toPriceUsd : null;
   return (
-    <motion.li
-      initial={{ opacity: 0, x: -6 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.2 }}
+    <motion.button
+      type="button"
+      onClick={() => onSelect(route.dex.id)}
+      disabled={locked}
+      aria-pressed={isActive}
+      whileTap={{ scale: locked ? 1 : 0.99 }}
+      className={cn(
+        'w-full flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 text-left',
+        'rounded-input border transition-colors',
+        'focus-visible:outline-none focus-visible:shadow-focus-ring',
+        isActive
+          ? 'border-accent/50 bg-accent-soft/40'
+          : 'border-border-subtle bg-bg/40 hover:border-ink-3/40 hover:bg-bg/60',
+        'disabled:cursor-not-allowed disabled:opacity-60',
+      )}
     >
-      <button
-        type="button"
-        onClick={() => onSelect(route.dex.id)}
-        disabled={locked}
-        aria-pressed={isActive}
-        className={cn(
-          'w-full flex items-center gap-3 px-4 py-3 text-left',
-          'transition-colors',
-          'hover:bg-accent-soft/40 focus-visible:outline-none focus-visible:bg-accent-soft/60',
-          isActive && 'bg-accent-soft',
-          'disabled:cursor-not-allowed',
-        )}
-      >
-        <span
-          aria-hidden
-          className={cn(
-            'inline-block h-2.5 w-2.5 rounded-full shrink-0',
-            isActive && 'ring-2 ring-offset-2 ring-offset-surface',
-          )}
-          style={{
-            backgroundColor: route.dex.color,
-            boxShadow: isActive ? `0 0 0 2px rgb(var(--color-accent) / 0.4)` : undefined,
-          }}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-1.5 flex-wrap">
-            <span className={cn('font-medium text-sm sm:text-base', isActive && 'text-ink-1')}>
-              {route.dex.name}
+      <BrandLogo
+        color={route.dex.color}
+        logoUrl={route.dex.logoUrl}
+        initial={route.dex.name[0] ?? '?'}
+      />
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-ink-1 truncate">{route.dex.name}</span>
+          {isActive && !isBest && (
+            <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">
+              Selected
             </span>
-            {isBest && (
-              <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">
-                Best
-              </span>
-            )}
-            {isActive && !isBest && (
-              <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">
-                Selected
-              </span>
-            )}
-          </div>
-          <div className="text-[11px] sm:text-xs text-ink-3 truncate">
-            {route.dex.tagline} · fee {(route.dex.feeBps / 100).toFixed(2)}%
-          </div>
+          )}
         </div>
-        <div className="text-right shrink-0">
-          <div className="font-mono tabular text-xs sm:text-sm">
-            {formatTokenAmount(route.expectedReceive)} {toSymbol}
-          </div>
-          <div
-            className={cn(
-              'font-mono tabular text-[11px] sm:text-xs',
-              isBest ? 'text-ink-3' : 'text-negative',
-            )}
-          >
-            {isBest ? `fee ${formatUsd(route.feeUsd)}` : formatPercent(route.deltaFromBest)}
-          </div>
+        <div className="text-xs text-ink-3 mt-0.5 truncate">
+          Network Fees {formatUsd(route.feeUsd)}
         </div>
-      </button>
-    </motion.li>
+      </div>
+
+      <div className="text-right shrink-0 min-w-0">
+        <div className="font-mono tabular text-sm sm:text-base text-ink-1">
+          ~{formatTokenAmount(route.expectedReceive)} {toSymbol}
+        </div>
+        <div className="text-xs text-ink-3 font-mono tabular mt-0.5">
+          {usd !== null ? formatUsd(usd) : '—'}
+        </div>
+      </div>
+    </motion.button>
   );
 };
 
-const formatPercent = (fraction: number): string => {
-  const pct = fraction * 100;
-  if (Math.abs(pct) < 0.005) return '−0.00%';
-  return `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(2)}%`;
+const BrandLogo = ({
+  color,
+  logoUrl,
+  initial,
+}: {
+  color: string;
+  logoUrl: string;
+  initial: string;
+}) => {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span
+        aria-hidden
+        style={{ backgroundColor: color }}
+        className="inline-flex items-center justify-center shrink-0 h-11 w-11 rounded-xl text-white font-semibold text-lg shadow-sm"
+      >
+        {initial.toUpperCase()}
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      style={{ backgroundColor: color }}
+      className="inline-flex items-center justify-center shrink-0 h-11 w-11 rounded-xl overflow-hidden shadow-sm"
+    >
+      <img
+        src={logoUrl}
+        alt=""
+        width={44}
+        height={44}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+        className="h-full w-full object-cover"
+      />
+    </span>
+  );
+};
+
+const CountdownTimer = ({ remainingMs }: { remainingMs: number }) => {
+  const totalSec = Math.max(0, Math.ceil(remainingMs / 1000));
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  const isWarning = remainingMs <= 5000;
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 text-xs font-mono tabular',
+        isWarning ? 'text-warning' : 'text-ink-3',
+      )}
+    >
+      <span className="relative flex h-2 w-2">
+        <span
+          className={cn(
+            'absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping',
+            isWarning ? 'bg-warning' : 'bg-accent',
+          )}
+        />
+        <span
+          className={cn(
+            'relative inline-flex h-2 w-2 rounded-full',
+            isWarning ? 'bg-warning' : 'bg-accent',
+          )}
+        />
+      </span>
+      <span>
+        {String(min).padStart(2, '0')}:{String(sec).padStart(2, '0')}
+      </span>
+    </div>
+  );
 };

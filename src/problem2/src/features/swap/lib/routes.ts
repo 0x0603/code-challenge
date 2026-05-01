@@ -24,9 +24,13 @@ export type DexProfile = {
   readonly feeBps: number;
   /** Returns fractional slippage (0.001 = 0.1%) given a USD trade size. */
   readonly slippage: (amountUsd: number) => number;
-  /** Hex color used for the route-graph stroke. */
+  /** Hex color used for accent rows and the brand-square fallback. */
   readonly color: string;
+  /** Brand logo URL (DefiLlama protocol icons CDN). */
+  readonly logoUrl: string;
 };
+
+const LOGO_BASE = 'https://icons.llamao.fi/icons/protocols';
 
 export const DEX_PROFILES: readonly DexProfile[] = [
   {
@@ -36,6 +40,7 @@ export const DEX_PROFILES: readonly DexProfile[] = [
     feeBps: 30,
     slippage: (usd) => 0.00005 * Math.sqrt(usd),
     color: '#FF007A',
+    logoUrl: `${LOGO_BASE}/uniswap?w=64&h=64`,
   },
   {
     id: 'orderbook',
@@ -44,6 +49,7 @@ export const DEX_PROFILES: readonly DexProfile[] = [
     feeBps: 5,
     slippage: (usd) => 0.0000012 * usd,
     color: '#6966FF',
+    logoUrl: `${LOGO_BASE}/dydx?w=64&h=64`,
   },
   {
     id: 'stable',
@@ -52,6 +58,7 @@ export const DEX_PROFILES: readonly DexProfile[] = [
     feeBps: 20,
     slippage: () => 0.0008,
     color: '#A6192E',
+    logoUrl: `${LOGO_BASE}/curve-finance?w=64&h=64`,
   },
   {
     id: 'aggregator',
@@ -60,6 +67,7 @@ export const DEX_PROFILES: readonly DexProfile[] = [
     feeBps: 10,
     slippage: () => 0.0012,
     color: '#1F2C3D',
+    logoUrl: `${LOGO_BASE}/1inch-network?w=64&h=64`,
   },
 ];
 
