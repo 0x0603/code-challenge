@@ -33,9 +33,16 @@ Node ≥ 20. `npm` works too — pnpm is just what I used.
 
 ---
 
-| Main swap form | Choose best router |
-| :---: | :---: |
-| <img src="image.png" width="100%" alt="Main view" /> | <img src="image-1.png" width="100%" alt="Confirmed state" /> |
+<table width="100%">
+  <tr>
+    <td width="50%" align="center"><b>Main swap form</b></td>
+    <td width="50%" align="center"><b>Choose best router</b></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="image.png" width="100%" alt="Main view" /></td>
+    <td width="50%"><img src="image-1.png" width="100%" alt="Confirmed state" /></td>
+  </tr>
+</table>
 
 ## Product thinking
 
