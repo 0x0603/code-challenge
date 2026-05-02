@@ -156,7 +156,7 @@ export const SwapForm = () => {
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="grid lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)] gap-6 items-start"
+        className="grid lg:grid-cols-[minmax(0,540px)_minmax(0,1fr)] gap-6 items-start"
       >
         <fieldset
           disabled={isLocked}
