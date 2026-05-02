@@ -11,11 +11,11 @@ Three problems, each in its own folder. Open the linked README for the full writ
 ## Problem 2 preview
 
 <p align="center">
-  <img src="./src/problem2/image.png" width="900" alt="99TechSwap — main swap form" />
+  <img src="./src/problem2/image.png" width="100%" alt="99TechSwap — main swap form" />
 </p>
 
 <p align="center">
-  <img src="./src/problem2/image-1.png" width="900" alt="99TechSwap — best-route comparison" />
+  <img src="./src/problem2/image-1.png" width="100%" alt="99TechSwap — best-route comparison" />
 </p>
 
 ## Repo layout
