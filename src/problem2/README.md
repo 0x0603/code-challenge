@@ -35,7 +35,7 @@ Node ≥ 20. `npm` works too — pnpm is just what I used.
 
 | Main swap form | Choose best router |
 | :---: | :---: |
-| <img src="image.png" width="840" alt="Main view" /> | <img src="image-1.png" width="840" alt="Confirmed state" /> |
+| <img src="image.png" width="100%" alt="Main view" /> | <img src="image-1.png" width="100%" alt="Confirmed state" /> |
 
 ## Product thinking
 
