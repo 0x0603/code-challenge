@@ -8,6 +8,16 @@ Three problems, each in its own folder. Open the linked README for the full writ
 | **[Problem 2](./src/problem2/README.md)** | 99TechSwap — currency-swap form with multi-DEX comparison, live insufficient-balance feedback, and quote countdown · **[Live demo ↗](https://code-challenge-sandy.vercel.app/)** | Vite, React 18, TypeScript strict, Tailwind, RHF + Zod, TanStack Query, Vitest | [`src/problem2/`](./src/problem2/) |
 | **[Problem 3](./src/problem3/SOLUTION.md)** | Code review and refactor of `WalletPage` — 14 issues ranked by severity, single-file refactor, pure-helper tests | React + TypeScript | [`src/problem3/`](./src/problem3/) |
 
+## Problem 2 preview
+
+<p align="center">
+  <img src="./src/problem2/image.png" width="900" alt="99TechSwap — main swap form" />
+</p>
+
+<p align="center">
+  <img src="./src/problem2/image-1.png" width="900" alt="99TechSwap — best-route comparison" />
+</p>
+
 ## Repo layout
 
 ```
