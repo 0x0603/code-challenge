@@ -8,7 +8,27 @@ const PRICES_URL = 'https://interview.switcheo.com/prices.json';
  * bake the missing-list into the data layer.
  */
 const ICON_BASE = 'https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens';
-const iconUrlFor = (symbol: string) => `${ICON_BASE}/${symbol}.svg`;
+
+/**
+ * The price feed reports stake/redemption derivatives in uppercase
+ * (`STATOM`, `RATOM`), but Switcheo's icon repo stores them with the
+ * lowercase prefix (`stATOM.svg`, `rATOM.svg`). Pattern-based rewrites
+ * would break unrelated tickers (e.g. `STRD` is Stride, not `st` + `RD`),
+ * so we use an explicit allow-list. Add new entries here when a new
+ * derivative ships.
+ */
+const ICON_NAME_OVERRIDES: Readonly<Record<string, string>> = {
+  STATOM: 'stATOM',
+  STEVMOS: 'stEVMOS',
+  STLUNA: 'stLUNA',
+  STOSMO: 'stOSMO',
+  RATOM: 'rATOM',
+};
+
+const iconUrlFor = (symbol: string) => {
+  const name = ICON_NAME_OVERRIDES[symbol] ?? symbol;
+  return `${ICON_BASE}/${name}.svg`;
+};
 
 /**
  * The feed sometimes returns multiple records for the same currency (e.g.
